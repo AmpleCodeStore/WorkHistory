@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Daily Timesheet</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 40px; max-width: 900px; }
+  h1 { color: #2c3e50; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+  th { background-color: #f4f4f4; }
+  tr:nth-child(even) { background-color: #fafafa; }
+  .summary { margin-top: 20px; font-weight: bold; }
+  form { margin-top: 20px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+  input { padding: 5px; }
+  button { padding: 5px 10px; grid-column: span 7; }
+</style>
+</head>
+<body>
+
+<h1>Daily Timesheet</h1>
+
+<table id="timesheet-table">
+  <thead>
+    <tr>
+      <th>Sr. No</th>
+      <th>Date</th>
+      <th>Task</th>
+      <th>Subtask</th>
+      <th>Project</th>
+      <th>Hours</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<div class="summary" id="summary"></div>
+
+<h2>Add Entry</h2>
+<form id="timesheet-form">
+  <input name="Sr.No" placeholder="Sr. No" required>
+  <input name="Date" type="date" required>
+  <input name="Task" placeholder="Task">
+  <input name="Subtask" placeholder="Subtask">
+  <input name="Project" placeholder="Project">
+  <input name="Hours" type="number" step="0.1" placeholder="Hours">
+  <input name="Notes" placeholder="Notes">
+  <button type="submit">Submit</button>
+</form>
+
+<script>
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzIUHU0X9svhW9WBWHWQZ3l3aIYEBxMO_paIzLxccgWR4vf_UE7qNySu6n3pKYV9wFC/exec"; // Replace with Apps Script Web App URL
+
+async function loadTimesheet() {
+  try {
+    const res = await fetch(WEB_APP_URL);
+    const data = await res.json();
+    const tbody = document.querySelector('#timesheet-table tbody');
+    tbody.innerHTML = "";
+    let totalHours = 0;
+
+    data.sort((a,b) => new Date(a.Date) - new Date(b.Date));
+    data.forEach(entry => {
+      if(entry["Sr.No"]) {
+        totalHours += parseFloat(entry.Hours) || 0;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${entry["Sr.No"]}</td>
+          <td>${entry["Date"]}</td>
+          <td>${entry["Task"]}</td>
+          <td>${entry["Subtask"]}</td>
+          <td>${entry["Project"]}</td>
+          <td>${entry["Hours"]}</td>
+          <td>${entry["Notes"]}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    });
+
+    document.getElementById("summary").innerText = `Total Hours: ${totalHours}`;
+  } catch(err) {
+    console.error("Error loading sheet:", err);
+  }
+}
+
+document.getElementById("timesheet-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const formData = Object.fromEntries(new FormData(e.target).entries());
+  formData.Hours = parseFloat(formData.Hours) || 0;
+
+  try {
+    const res = await fetch(WEB_APP_URL, {
+      method: "POST",
+      body: JSON.stringify(formData)
+    });
+    const result = await res.json();
+    if(result.status === "success") {
+      e.target.reset();
+      loadTimesheet(); // Refresh table
+      alert("Entry added successfully!");
+    } else {
+      alert("Failed to add entry.");
+    }
+  } catch(err) {
+    console.error(err);
+    alert("Error submitting entry.");
+  }
+});
+
+// Load table on page load
+loadTimesheet();
+</script>
+
+</body>
+</html>
